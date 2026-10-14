@@ -1,0 +1,16 @@
+# Build output
+target/
+*.class
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Frontend
+node_modules/
+dist/
+
+# Secrets and local env
+.env
+*.log
