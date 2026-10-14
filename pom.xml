@@ -19,11 +19,13 @@
 
     <modules>
         <module>eureka-server</module>
+        <module>payment-service</module>
     </modules>
 
     <properties>
         <java.version>21</java.version>
         <spring-cloud.version>2025.1.3</spring-cloud.version>
+        <argLine>-Duser.timezone=UTC</argLine>
     </properties>
 
     <dependencyManagement>
