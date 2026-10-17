@@ -2,15 +2,21 @@ package com.paystream.payment.service;
 
 import com.paystream.payment.domain.Account;
 import com.paystream.payment.domain.Payment;
+import com.paystream.payment.domain.PaymentStatus;
 import com.paystream.payment.exception.AccountNotFoundException;
 import com.paystream.payment.exception.PaymentNotFoundException;
 import com.paystream.payment.exception.PaymentValidationException;
 import com.paystream.payment.repository.AccountRepository;
 import com.paystream.payment.repository.PaymentRepository;
 import com.paystream.payment.web.dto.CreatePaymentRequest;
+import com.paystream.payment.web.dto.PageResponse;
 import com.paystream.payment.web.dto.PaymentResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -57,6 +63,19 @@ public class PaymentService {
                 .orElseThrow(() -> new PaymentNotFoundException(paymentId));
     }
 
+    @Transactional(readOnly = true)
+    public PageResponse<PaymentResponse> listPayments(PaymentStatus status, int page, int size) {
+        // Fixed sort keeps queries on the (status, created_at DESC) index and avoids client-chosen sort fields
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        Page<Payment> result = (status == null)
+                ? paymentRepository.findAll(pageable)
+                : paymentRepository.findByStatus(status, pageable);
+
+        log.debug("Listed {} of {} payments (status={}, page={}, size={})",
+                result.getNumberOfElements(), result.getTotalElements(), status, page, size);
+        return PageResponse.from(result.map(PaymentResponse::from));
+    }
     private void validateParties(CreatePaymentRequest request) {
         if (request.payerAccount().equals(request.payeeAccount())) {
             throw new PaymentValidationException("Payer and Payee accounts must be different");
