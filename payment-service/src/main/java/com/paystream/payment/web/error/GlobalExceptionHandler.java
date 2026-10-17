@@ -5,10 +5,12 @@ import java.util.List;
 import java.util.UUID;
 
 import com.paystream.payment.exception.AccountNotFoundException;
+import com.paystream.payment.exception.IdempotencyKeyReuseException;
 import com.paystream.payment.exception.PaymentNotFoundException;
 import com.paystream.payment.exception.PaymentValidationException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSourceResolvable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 
 /**
  * Converts every exception into an RFC 9457 Problem Details response with a stable errorCode.
@@ -98,6 +101,30 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         problem.setInstance(URI.create(request.getRequestURI()));
         problem.setProperty("errorCode", errorCode);
         return problem;
+    }
+
+    @ExceptionHandler(IdempotencyKeyReuseException.class)
+    ProblemDetail handleIdempotencyKeyReuse(IdempotencyKeyReuseException ex, HttpServletRequest request) {
+        return problem(HttpStatus.CONFLICT, "Idempotency-Key reused", "IDEMPOTENCY_KEY_REUSED",
+                ex.getMessage(), request);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleHandlerMethodValidationException(HandlerMethodValidationException ex,
+                                                                            HttpHeaders headers,
+                                                                            HttpStatusCode status,
+                                                                            WebRequest request) {
+        List<String> violations = ex.getAllErrors().stream()
+                .map(MessageSourceResolvable::getDefaultMessage)
+                .toList();
+
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, "Request validation failed");
+        problem.setTitle("Invalid request");
+        problem.setProperty("errorCode", "VALIDATION_FAILED");
+        problem.setProperty("errors", violations);
+
+        log.warn("Request parameter validation failed: {}", violations);
+        return handleExceptionInternal(ex, problem, headers, status, request);
     }
 
     /** One rejected field in a request body. */

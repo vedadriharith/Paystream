@@ -4,6 +4,7 @@ import java.net.URI;
 import java.util.UUID;
 
 import com.paystream.payment.domain.PaymentStatus;
+import com.paystream.payment.service.CreatePaymentResult;
 import com.paystream.payment.service.PaymentService;
 import com.paystream.payment.web.dto.CreatePaymentRequest;
 import com.paystream.payment.web.dto.PageResponse;
@@ -13,7 +14,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -38,18 +41,28 @@ public class PaymentController {
 
     @PostMapping
     @Operation(summary = "Create a payment",
-            description = "Accepts a payment in INITIATED state. Requires a unique Idempotency-Key header.")
+            description = "Returns 201 for a new payment. Retrying with the same Idempotency-Key and body "
+                    + "returns the original payment with 200; reusing the key with a different body returns 409.")
     public ResponseEntity<PaymentResponse> createPayment(
-            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @RequestHeader("Idempotency-Key")
+            @Pattern(regexp = "^[A-Za-z0-9_-]{8,64}$",
+                    message = "Idempotency-Key must be 8-64 characters of letters, digits, '-' or '_'")
+            String idempotencyKey,
             @Valid @RequestBody CreatePaymentRequest request) {
 
-        PaymentResponse response = paymentService.createPayment(idempotencyKey, request);
+        CreatePaymentResult result = paymentService.createPayment(idempotencyKey, request);
+
+        if (!result.created()) {
+            return ResponseEntity.status(HttpStatus.OK)
+                    .header("Idempotent-Replayed", "true")
+                    .body(result.payment());
+        }
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{paymentId}")
-                .buildAndExpand(response.paymentId())
+                .buildAndExpand(result.payment().paymentId())
                 .toUri();
-        return ResponseEntity.created(location).body(response);
+        return ResponseEntity.created(location).body(result.payment());
     }
 
     @GetMapping("/{paymentId}")
@@ -62,8 +75,11 @@ public class PaymentController {
     @Operation(summary = "List payments, newest first, optionally filtered by status")
     public PageResponse<PaymentResponse> listPayments(
             @RequestParam(required = false) PaymentStatus status,
-            @RequestParam(defaultValue = "0") @Min(0) int page,
-            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+            @RequestParam(defaultValue = "0")
+            @Min(value = 0, message = "page must be 0 or greater") int page,
+            @RequestParam(defaultValue = "20")
+            @Min(value = 1, message = "size must be at least 1")
+            @Max(value = 100, message = "size must be at most 100") int size) {
         return paymentService.listPayments(status, page, size);
     }
 }

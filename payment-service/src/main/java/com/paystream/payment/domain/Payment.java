@@ -41,6 +41,10 @@ public class Payment implements Persistable<UUID> {
     @Column(nullable = false, length = 20, updatable = false)
     private String payerAccount;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
+    @Column(length = 64, updatable = false)
+    private String requestHash;
+
     @Column(nullable = false, length = 20, updatable = false)
     private String payeeAccount;
 
@@ -78,6 +82,7 @@ public class Payment implements Persistable<UUID> {
      * Creates a new payment in INITIATED state with an application-generated id.
      */
     public static Payment initiate(String idempotencyKey,
+                                   String requestHash,
                                    String payerAccount,
                                    String payeeAccount,
                                    BigDecimal amount,
@@ -86,6 +91,7 @@ public class Payment implements Persistable<UUID> {
         Payment payment = new Payment();
         payment.id = UUID.randomUUID();
         payment.idempotencyKey = idempotencyKey;
+        payment.requestHash = requestHash;
         payment.payerAccount = payerAccount;
         payment.payeeAccount = payeeAccount;
         payment.amount = amount;

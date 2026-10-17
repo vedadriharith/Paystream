@@ -44,7 +44,7 @@ class PaymentRepositoryTest {
 
     @Test
     void savesPaymentAndFindsItByIdempotencyKey() {
-        Payment payment = Payment.initiate("test-key-1", "ACC1000000001", "ACC1000000002",
+        Payment payment = Payment.initiate("test-key-1", "test-hash-1", "ACC1000000001", "ACC1000000002",
                 new BigDecimal("250.00"), "INR", "Rent for October");
 
         paymentRepository.saveAndFlush(payment);
@@ -59,7 +59,7 @@ class PaymentRepositoryTest {
 
     @Test
     void completedPaymentCannotBeMarkedFailed() {
-        Payment payment = Payment.initiate("test-key-2", "ACC1000000001", "ACC1000000002",
+        Payment payment = Payment.initiate("test-key-2", "test-hash-2", "ACC1000000001", "ACC1000000002",
                 new BigDecimal("100.00"), "INR", null);
         payment.markCompleted();
 
