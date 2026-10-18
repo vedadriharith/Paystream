@@ -9,6 +9,7 @@ import com.paystream.payment.exception.AccountNotFoundException;
 import com.paystream.payment.exception.IdempotencyKeyReuseException;
 import com.paystream.payment.exception.PaymentNotFoundException;
 import com.paystream.payment.exception.PaymentValidationException;
+import com.paystream.payment.messaging.PaymentEventPublisher;
 import com.paystream.payment.repository.AccountRepository;
 import com.paystream.payment.repository.PaymentRepository;
 import com.paystream.payment.web.dto.CreatePaymentRequest;
@@ -40,6 +41,7 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final AccountRepository accountRepository;
     private final TransactionTemplate transactionTemplate;
+    private final PaymentEventPublisher paymentEventPublisher;
 
     /**
      * Creates a payment, or replays the original one if this Idempotency-Key was seen before.
@@ -58,6 +60,9 @@ public class PaymentService {
         try {
             PaymentResponse created = transactionTemplate.execute(
                     status -> insertNewPayment(idempotencyKey, requestHash, request));
+            // Dual write: the DB transaction has committed, so a publish failure here loses the event.
+            // Phase 4 replaces this call with the transactional outbox.
+            paymentEventPublisher.publishPaymentInitiated(created);
             return CreatePaymentResult.created(created);
         } catch (DataIntegrityViolationException ex) {
             if (!isIdempotencyKeyViolation(ex)) {
