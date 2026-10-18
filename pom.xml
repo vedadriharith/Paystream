@@ -67,6 +67,8 @@
                             <eureka.client.enabled>false</eureka.client.enabled>
                             <!-- Tests must never relay real outbox rows to the shared local Kafka -->
                             <paystream.outbox.enabled>false</paystream.outbox.enabled>
+                            <!-- Tests must never join real consumer groups on the shared local Kafka -->
+                            <spring.kafka.listener.auto-startup>false</spring.kafka.listener.auto-startup>
                         </systemPropertyVariables>
                     </configuration>
                 </plugin>
