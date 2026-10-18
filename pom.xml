@@ -18,10 +18,10 @@
     <name>PayStream</name>
 
     <modules>
+        <module>common-events</module>
         <module>eureka-server</module>
         <module>payment-service</module>
         <module>api-gateway</module>
-        <module>common-events</module>
         <module>ledger-service</module>
     </modules>
 
@@ -54,6 +54,7 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+
     <build>
         <pluginManagement>
             <plugins>
@@ -64,6 +65,8 @@
                         <systemPropertyVariables>
                             <!-- Tests must never register with or deregister from the shared local Eureka -->
                             <eureka.client.enabled>false</eureka.client.enabled>
+                            <!-- Tests must never relay real outbox rows to the shared local Kafka -->
+                            <paystream.outbox.enabled>false</paystream.outbox.enabled>
                         </systemPropertyVariables>
                     </configuration>
                 </plugin>
