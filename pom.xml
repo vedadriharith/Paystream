@@ -21,6 +21,7 @@
         <module>eureka-server</module>
         <module>payment-service</module>
         <module>api-gateway</module>
+        <module>common-events</module>
     </modules>
 
     <properties>
@@ -44,6 +45,11 @@
                 <groupId>org.springdoc</groupId>
                 <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
                 <version>${springdoc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.paystream</groupId>
+                <artifactId>common-events</artifactId>
+                <version>${project.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
